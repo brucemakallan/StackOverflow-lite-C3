@@ -15,9 +15,10 @@ def create_tables():
         """)
     commands.append("""
         CREATE TABLE IF NOT EXISTS answers (
-                answer_id INTEGER PRIMARY KEY, 
+                answer_id SERIAL PRIMARY KEY, 
                 question_id INTEGER, 
-                answer_answer VARCHAR(255) NOT NULL, 
+                answer_answer VARCHAR(255) NOT NULL,
+                answer_accepted BOOLEAN NOT NULL,  
                 answer_date_posted VARCHAR(255), 
                 FOREIGN KEY (question_id) 
                 REFERENCES questions (question_id) 
