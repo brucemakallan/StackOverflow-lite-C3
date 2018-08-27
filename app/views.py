@@ -16,7 +16,7 @@ def api_questions():
     """Get all questions"""
 
     # fetch from the database. The type of object is used to determine the table to fetch from
-    list_of_question_objs = get_all_entities(Question(0, '', ''))
+    list_of_question_objs = get_all_entities(Question(0, 0, '', ''))
     if len(list_of_question_objs) > 0:
         # Convert the list of objects into a list of dictionaries
         list_of_question_dicts = [question_obj.obj_to_dict() for question_obj in list_of_question_objs]
@@ -43,7 +43,7 @@ def api_question(question_id):
     """Get a specific question using its id"""
 
     question_selected = []
-    question_obj = get_one_entity(Question(0, '', ''), question_id)
+    question_obj = get_one_entity(Question(0, 0, '', ''), question_id)
     if question_obj is None:
         return custom_response(404, 'Not Found', 'Question with id:' + str(question_id) + ' does not exist')
     question_selected.append(question_obj.obj_to_dict())
@@ -58,7 +58,7 @@ def api_add_question():
     if 'question' not in input_data.keys():
         return custom_response(400, 'Bad Request', "Request must contain 'question' data")
     question = input_data['question']
-    all_questions = get_all_entities(Question(0, '', ''))
+    all_questions = get_all_entities(Question(0, 0, '', ''))
     if all_questions is not None:
         for qn in all_questions:
             if qn.question.strip().lower() == question.strip().lower():  # check if question already exists
@@ -90,10 +90,8 @@ def api_add_answer(question_id):
 def api_delete_question(questionId):
     """Delete a specific question based on id"""
 
-    # TODO delete question's answers as well
-
     # get object from database
-    all_questions = get_all_entities(Question(0, '', ''))
+    all_questions = get_all_entities(Question(0, 0, '', ''))
     if len(all_questions) > 0:
         for qn in all_questions:
             if qn.id == questionId:

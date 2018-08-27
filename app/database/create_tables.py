@@ -7,8 +7,16 @@ def create_tables():
     """ Create tables in the PostgreSQL database (only if tables do NOT exist) """
 
     commands = []
+    commands.append("""
+        CREATE TABLE IF NOT EXISTS users (
+                user_id SERIAL PRIMARY KEY, 
+                user_username VARCHAR(255) NOT NULL, 
+                user_password VARCHAR(255) NOT NULL 
+        )
+    """)
     commands.append(""" CREATE TABLE IF NOT EXISTS questions (
-                question_id SERIAL PRIMARY KEY, 
+                question_id SERIAL PRIMARY KEY,
+                user_id INTEGER, 
                 question_question VARCHAR(255) NOT NULL,  
                 question_date_posted VARCHAR(255)
                 )
@@ -16,7 +24,8 @@ def create_tables():
     commands.append("""
         CREATE TABLE IF NOT EXISTS answers (
                 answer_id SERIAL PRIMARY KEY, 
-                question_id INTEGER, 
+                question_id INTEGER,
+                user_id INTEGER, 
                 answer_answer VARCHAR(255) NOT NULL,
                 answer_accepted BOOLEAN NOT NULL,  
                 answer_date_posted VARCHAR(255), 

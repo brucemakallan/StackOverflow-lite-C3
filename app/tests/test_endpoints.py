@@ -14,6 +14,8 @@ class EndpointsTestCase(unittest.TestCase):
         self.test_data_question3 = dict(question='Test question 3')
         self.test_data_answer = dict(answer="Test answer 1")
 
+    # TODO run tests with empty database and add validation
+
     # test for endpoints. Run using $pytest
     def test_get_all_questions(self):
         """Run test for: Get all questions"""
