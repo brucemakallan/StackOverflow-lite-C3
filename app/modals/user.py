@@ -10,3 +10,4 @@ class User:
         user_dict['id'] = self.id
         user_dict['username'] = self.username
         user_dict['password'] = self.password
+        return user_dict

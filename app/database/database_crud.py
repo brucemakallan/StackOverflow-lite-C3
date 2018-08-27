@@ -1,10 +1,10 @@
 import psycopg2
 
-from app.answer import Answer
+from app.modals.answer import Answer
 from app.database.connect import connect_to_db
 from app.database.create_tables import create_tables
-from app.question import Question
-from app.user import User
+from app.modals.question import Question
+from app.modals.user import User
 
 
 def add_entity(entity_obj):
@@ -20,7 +20,7 @@ def add_entity(entity_obj):
             sql = "INSERT INTO questions(user_id, question_question, question_date_posted) VALUES(%s, %s, %s) RETURNING question_id"
             cur.execute(sql, (str(entity_obj.user_id), entity_obj.question, entity_obj.date_posted))
         elif type(entity_obj) is Answer:  # for the Answer object
-            sql = "INSERT INTO answers(question_id, user_id, answer_answer, answer_accepted, answer_date_posted) VALUES(%s, %s, %s, %s) RETURNING answer_id"
+            sql = "INSERT INTO answers(question_id, user_id, answer_answer, answer_accepted, answer_date_posted) VALUES(%s, %s, %s, %s, %s) RETURNING answer_id"
             cur.execute(sql, (str(entity_obj.question_id), str(entity_obj.user_id), entity_obj.answer, entity_obj.accepted, entity_obj.date_posted))
         elif type(entity_obj) is User:  # for the User object
             sql = "INSERT INTO users(user_username, user_password) VALUES(%s, %s) RETURNING user_id"
@@ -101,9 +101,9 @@ def get_one_entity(entity_obj, entity_id):
         row = cur.fetchone()
         if row is not None:
             if type(entity_obj) is Question:
-                entity = Question(row[0], row[1], row[2])
+                entity = Question(row[0], row[1], row[2], row[3])
             elif type(entity_obj) is Answer:
-                entity = Answer(row[0], row[1], row[2], row[3], row[4])
+                entity = Answer(row[0], row[1], row[2], row[3], row[4], row[5])
             elif type(entity_obj) is User:
                 entity = User(row[0], row[1], row[2])
         cur.close()

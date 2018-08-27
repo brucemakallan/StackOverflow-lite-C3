@@ -3,21 +3,21 @@ import datetime
 from flask import jsonify, request, make_response
 
 from app import create_app
-from app.answer import Answer
 from app.database.database_crud import add_entity, get_all_entities, get_one_entity, update_entity, delete_entity
-from app.question import Question
-
+from app.modals.answer import Answer
+from app.modals.question import Question
+from app.modals.user import User
 
 app = create_app()
 
 
 @app.route("/api/v1/questions", methods=['GET'])
-def api_questions():
+def api_get_all_questions():
     """Get all questions"""
 
     # fetch from the database. The type of object is used to determine the table to fetch from
     list_of_question_objs = get_all_entities(Question(0, 0, '', ''))
-    if len(list_of_question_objs) > 0:
+    if list_of_question_objs is not None:
         # Convert the list of objects into a list of dictionaries
         list_of_question_dicts = [question_obj.obj_to_dict() for question_obj in list_of_question_objs]
         return jsonify(list_of_question_dicts), 200
@@ -26,11 +26,11 @@ def api_questions():
 
 
 @app.route("/api/v1/questions/<int:question_id>/answers", methods=['GET'])
-def api_answers(question_id):
+def api_get_answers(question_id):
     """Get all answers to a specific question"""
 
-    list_of_answer_objs = get_all_entities(Answer(0, 0, '', '', ''), question_id)
-    if len(list_of_answer_objs) > 0:
+    list_of_answer_objs = get_all_entities(Answer(0, 0, 0, '', '', ''), question_id)
+    if list_of_answer_objs is not None:
         # Convert the list of objects into a list of dictionaries
         list_of_answer_dicts = [answer_obj.obj_to_dict() for answer_obj in list_of_answer_objs]
         return jsonify(list_of_answer_dicts), 200
@@ -39,7 +39,7 @@ def api_answers(question_id):
 
 
 @app.route("/api/v1/questions/<int:question_id>", methods=['GET'])
-def api_question(question_id):
+def api_get_one_question(question_id):
     """Get a specific question using its id"""
 
     question_selected = []
@@ -64,8 +64,8 @@ def api_add_question():
             if qn.question.strip().lower() == question.strip().lower():  # check if question already exists
                 return custom_response(409, 'Conflict', "Duplicate Value")
     date_posted = datetime.datetime.now()
-    new_id = add_entity(Question(0, question, date_posted))  # add to database and return new id
-    return jsonify(Question(new_id, question, date_posted).obj_to_dict()), 201
+    new_id = add_entity(Question(0, 0, question, date_posted))  # add to database and return new id
+    return jsonify(Question(new_id, 0, question, date_posted).obj_to_dict()), 201
 
 
 @app.route("/api/v1/questions/<int:question_id>/answers", methods=['POST'])
@@ -76,14 +76,14 @@ def api_add_answer(question_id):
     if 'answer' not in input_data.keys():
         return custom_response(400, 'Bad Request', "Request must contain 'answer' data")
     answer = input_data['answer']
-    all_answers = get_all_entities(Answer(0, 0, '', '', ''), question_id)
+    all_answers = get_all_entities(Answer(0, 0, 0, '', '', ''), question_id)
     for ans in all_answers:
         if ans.answer.strip().lower() == answer.strip().lower():  # check if value already exists
             return custom_response(409, 'Conflict', "Duplicate Value")
     accepted = 'false'
     date_posted = datetime.datetime.now()
-    new_id = add_entity(Answer(0, question_id, answer, accepted, date_posted))
-    return jsonify(Answer(new_id, question_id, answer, accepted, date_posted).obj_to_dict()), 201
+    new_id = add_entity(Answer(0, question_id, 0, answer, accepted, date_posted))
+    return jsonify(Answer(new_id, question_id, 0, answer, accepted, date_posted).obj_to_dict()), 201
 
 
 @app.route("/api/v1/questions/<int:questionId>", methods=['DELETE'])
@@ -92,7 +92,7 @@ def api_delete_question(questionId):
 
     # get object from database
     all_questions = get_all_entities(Question(0, 0, '', ''))
-    if len(all_questions) > 0:
+    if all_questions is not None:
         for qn in all_questions:
             if qn.id == questionId:
                 delete_entity(qn)
@@ -115,8 +115,8 @@ def api_update_answer(questionId, answerId):
         new_accepted_value = input_data['accepted']
     new_answer_value = input_data['answer']
 
-    all_answers = get_all_entities(Answer(0, 0, '', '', ''), questionId)
-    if len(all_answers) > 0:
+    all_answers = get_all_entities(Answer(0, 0, 0, '', '', ''), questionId)
+    if all_answers is not None:
         for ans in all_answers:
             if ans.id == answerId:  # check if answer exists
                 # replace old values with new ones if available
@@ -129,6 +129,24 @@ def api_update_answer(questionId, answerId):
         return custom_response(404, 'Not Found', 'No Answer found with id, ' + str(answerId))
     else:  # Question does not exist
         return custom_response(404, 'Not Found', 'No answers for the question')
+
+
+@app.route("/api/v1/auth/signup", methods=['POST'])
+def register_user():
+    """Post / Add a new user"""
+
+    input_data = request.get_json(force=True)
+    if 'username' not in input_data.keys() or 'password' not in input_data.keys():
+        return custom_response(400, 'Bad Request', "Request must contain 'username' and 'password' data")
+    username = input_data['username']
+    password = input_data['password']
+    all_users = get_all_entities(User(0, '', ''))
+    if all_users is not None:
+        for user in all_users:
+            if user.username.strip().lower() == username.strip().lower():  # check if user already exists
+                return custom_response(409, 'Conflict', "Duplicate Value")
+    new_id = add_entity(User(0, username, password))  # add to database and return new id
+    return jsonify(User(new_id, username, password).obj_to_dict()), 201
 
 
 def custom_response(status_code, status_message, friendly_message):
