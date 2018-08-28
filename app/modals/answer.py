@@ -17,4 +17,3 @@ class Answer:
         answer_dict['accepted'] = self.accepted
         answer_dict['date_posted'] = self.date_posted
         return answer_dict
-
