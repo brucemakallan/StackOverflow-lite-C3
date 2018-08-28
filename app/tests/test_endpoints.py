@@ -2,26 +2,26 @@ import unittest
 
 from flask import json
 
-from app import Database
 from app.views import app
 
 
 class EndpointsTestCase(unittest.TestCase):
 
     def setUp(self):
-        Database(database='stackoverflowtest', host='localhost', user='postgres', password='postgres')
-
+        app.config['TESTING'] = True
+        app.config['DEBUG'] = True
         self.client = app.test_client(self)
         self.test_data_question1 = dict(question='Test question 1')
         self.test_data_question2 = dict(question='Test question 2')
         self.test_data_question3 = dict(question='Test question 3')
         self.test_data_answer = dict(answer="Test answer 1")
 
-    def tearDown(self):
+    # TODO
+    # def tearDown(self):
         # drop all tables from the test database
-        tables = ['users', 'answers', 'questions']
-        for table in tables:
-            Initializer.database_obj.drop_table(table)
+        # tables = ['users', 'answers', 'questions']
+        # for table in tables:
+        #     database_obj.drop_table(table)
 
     # test for endpoints. Run using $pytest
     def test_get_all_questions(self):
