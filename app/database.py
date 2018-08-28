@@ -7,72 +7,46 @@ from app.modals.user import User
 
 class Database:
 
-    conn = None
-    cur = None
-
-    def __init__(self, database, host, user, password):
-        """Get database variables"""
-        self.database = database
-        self.host = host
-        self.user = user
-        self.password = password
-        self.conn, self.cur = self.connect_to_database()
-        self.create_tables()
-
-    def connect_to_database(self):
-        """Connect to the database and return connection and cursor variables (used to run queries)"""
+    def __init__(self):
+        """Connect to the database"""
         try:
-            # return connection and cursor
-            conn = psycopg2.connect(database=self.database, host=self.host, user=self.user, password=self.password)
-            cur = conn.cursor()
-            return conn, cur
-        except (Exception, psycopg2.DatabaseError) as error:
-            print(error)
+            self.conn = psycopg2.connect("dbname='stackoverflow' user='postgres' host='localhost' password='postgres' port='5432'")
+            self.conn.autocommit = True
+            self.cur = self.conn.cursor()
 
-    def create_tables(self):
-        """Create all the tables required if they do not already exist"""
-        commands = ["""
-                    CREATE TABLE IF NOT EXISTS users (
-                            user_id SERIAL PRIMARY KEY, 
-                            user_username VARCHAR(255) NOT NULL, 
-                            user_password VARCHAR(255) NOT NULL 
-                    )""",
-                    """CREATE TABLE IF NOT EXISTS questions (
-                            question_id SERIAL PRIMARY KEY,
-                            user_id INTEGER, 
-                            question_question VARCHAR(255) NOT NULL,  
-                            question_date_posted VARCHAR(255)
-                            )""",
-                    """CREATE TABLE IF NOT EXISTS answers (
-                            answer_id SERIAL PRIMARY KEY, 
-                            question_id INTEGER,
-                            user_id INTEGER, 
-                            answer_answer VARCHAR(255) NOT NULL,
-                            answer_accepted BOOLEAN NOT NULL,  
-                            answer_date_posted VARCHAR(255), 
-                            FOREIGN KEY (question_id) 
-                            REFERENCES questions (question_id) 
-                            ON UPDATE CASCADE ON DELETE CASCADE
-                    )"""]
-        try:
+            """Create all the tables required if they do not already exist"""
+            commands = ["""
+                                CREATE TABLE IF NOT EXISTS users (
+                                        user_id SERIAL PRIMARY KEY, 
+                                        user_username VARCHAR(255) NOT NULL, 
+                                        user_password VARCHAR(255) NOT NULL 
+                                )""",
+                        """CREATE TABLE IF NOT EXISTS questions (
+                                question_id SERIAL PRIMARY KEY,
+                                user_id INTEGER, 
+                                question_question VARCHAR(255) NOT NULL,  
+                                question_date_posted VARCHAR(255)
+                                )""",
+                        """CREATE TABLE IF NOT EXISTS answers (
+                                answer_id SERIAL PRIMARY KEY, 
+                                question_id INTEGER,
+                                user_id INTEGER, 
+                                answer_answer VARCHAR(255) NOT NULL,
+                                answer_accepted BOOLEAN NOT NULL,  
+                                answer_date_posted VARCHAR(255), 
+                                FOREIGN KEY (question_id) 
+                                REFERENCES questions (question_id) 
+                                ON UPDATE CASCADE ON DELETE CASCADE
+                        )"""]
+
             for command in commands:
                 self.cur.execute(command)
-        except (Exception, psycopg2.DatabaseError) as error:
-            print(error)
-
-    def drop_tables(self):
-        """Drop all tables"""
-        try:
-            tables = ['users', 'questions', 'answers']
-            for table in tables:
-                self.cur.execute("DROP TABLE " + table)
         except (Exception, psycopg2.DatabaseError) as error:
             print(error)
 
     def add_entity(self, entity_obj):
         """Add an Entity (Answer, Question, User) to the database"""
         try:
-            # run query
             if type(entity_obj) is Question:  # for the Question object
                 sql = "INSERT INTO questions(user_id, question_question, question_date_posted) VALUES(%s, %s, %s) RETURNING question_id"
                 self.cur.execute(sql, (str(entity_obj.user_id), entity_obj.question, entity_obj.date_posted))
@@ -130,7 +104,6 @@ class Database:
         
         try:
             entity = None
-            # run query
             if tablename == 'questions':
                 self.cur.execute(
                     "SELECT question_id, user_id, question_question, question_date_posted FROM questions WHERE question_id=" + str(
@@ -185,7 +158,7 @@ class Database:
             print(error)
 
     def drop_table(self, tablename):
-        """Drop the table represented by this class"""
+        """Drop the table passed"""
         try:
             self.cur.execute("DROP TABLE " + tablename)
         except (Exception, psycopg2.DatabaseError) as error:

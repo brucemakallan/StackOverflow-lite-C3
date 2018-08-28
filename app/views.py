@@ -3,6 +3,7 @@ import datetime
 from flask import jsonify, request, make_response
 
 from app import create_app
+from app.database import Database
 
 from app.modals.answer import Answer
 from app.modals.question import Question
@@ -10,14 +11,16 @@ from app.modals.user import User
 
 
 # set app configuration
-app, database_obj = create_app(config_name='development')
+app = create_app(config_name='development')
+
+# get database object for connection to the database
+database_obj = Database()
 
 
 @app.route("/api/v1/questions", methods=['GET'])
 def api_get_all_questions():
     """Get all questions"""
 
-    # fetch from the database. The type of object is used to determine the table to fetch from
     list_of_question_objs = database_obj.get_all_entities('questions')
     if list_of_question_objs is not None:
         # Convert the list of objects into a list of dictionaries
