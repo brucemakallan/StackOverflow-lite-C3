@@ -15,12 +15,11 @@ class Database:
             self.cur = self.conn.cursor()
 
             """Create all the tables required if they do not already exist"""
-            commands = ["""
-                                CREATE TABLE IF NOT EXISTS users (
-                                        user_id SERIAL PRIMARY KEY, 
-                                        user_username VARCHAR(255) NOT NULL, 
-                                        user_password VARCHAR(255) NOT NULL 
-                                )""",
+            commands = ["""CREATE TABLE IF NOT EXISTS users (
+                                user_id SERIAL PRIMARY KEY, 
+                                user_username VARCHAR(255) NOT NULL, 
+                                user_password VARCHAR(255) NOT NULL 
+                            )""",
                         """CREATE TABLE IF NOT EXISTS questions (
                                 question_id SERIAL PRIMARY KEY,
                                 user_id INTEGER, 

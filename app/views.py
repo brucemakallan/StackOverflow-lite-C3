@@ -10,8 +10,7 @@ from app.modals.question import Question
 from app.modals.user import User
 
 
-# set app configuration
-app = create_app(config_name='development')
+app = create_app()
 
 # get database object for connection to the database
 database_obj = Database()
