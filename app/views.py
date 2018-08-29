@@ -1,8 +1,7 @@
 import datetime
 
-import jwt
 from flask import jsonify, request, make_response
-from flask_jwt_extended import create_access_token
+from flask_jwt_extended import create_access_token, jwt_refresh_token_required, create_refresh_token
 
 from app import create_app
 from app.database import Database
@@ -19,6 +18,7 @@ database_obj = Database()
 
 
 @app.route("/api/v1/questions", methods=['GET'])
+@jwt_refresh_token_required
 def api_get_all_questions():
     """Get all questions"""
 
@@ -26,12 +26,15 @@ def api_get_all_questions():
     if list_of_question_objs is not None:
         # Convert the list of objects into a list of dictionaries
         list_of_question_dicts = [question_obj.obj_to_dict() for question_obj in list_of_question_objs]
+        if len(list_of_question_dicts) == 0:
+            return custom_response(204, 'No Content', 'There are no Questions in store')
         return jsonify(list_of_question_dicts), 200
     else:
         return custom_response(204, 'No Content', 'There are no Questions in store')
 
 
 @app.route("/api/v1/questions/<int:question_id>/answers", methods=['GET'])
+@jwt_refresh_token_required
 def api_get_answers(question_id):
     """Get all answers to a specific question"""
 
@@ -39,12 +42,15 @@ def api_get_answers(question_id):
     if list_of_answer_objs is not None:
         # Convert the list of objects into a list of dictionaries
         list_of_answer_dicts = [answer_obj.obj_to_dict() for answer_obj in list_of_answer_objs]
+        if len(list_of_answer_dicts) == 0:
+            return custom_response(204, 'No Content', 'There are no Answers in store')
         return jsonify(list_of_answer_dicts), 200
     else:
         return custom_response(204, 'No Content', 'There are no Answers in store')
 
 
 @app.route("/api/v1/questions/<int:question_id>", methods=['GET'])
+@jwt_refresh_token_required
 def api_get_one_question(question_id):
     """Get a specific question using its id"""
 
@@ -57,6 +63,7 @@ def api_get_one_question(question_id):
 
 
 @app.route("/api/v1/questions", methods=['POST'])
+@jwt_refresh_token_required
 def api_add_question():
     """Post / Add a new question"""
 
@@ -68,13 +75,15 @@ def api_add_question():
     if all_questions is not None:
         for qn in all_questions:
             if qn.question.strip().lower() == question.strip().lower():  # check if question already exists
-                return custom_response(409, 'Conflict', "Duplicate Value")
+                return custom_response(409, 'Conflict', "Duplicate Value. Question already exists")
     date_posted = datetime.datetime.now()
+    # TODO add a user id as well
     new_id = database_obj.add_entity(Question(0, 0, question, date_posted))  # add to database and return new id
     return jsonify(Question(new_id, 0, question, date_posted).obj_to_dict()), 201  # 201 = created
 
 
 @app.route("/api/v1/questions/<int:question_id>/answers", methods=['POST'])
+@jwt_refresh_token_required
 def api_add_answer(question_id):
     """Add an answer to a specific question"""
 
@@ -85,14 +94,16 @@ def api_add_answer(question_id):
     all_answers = database_obj.get_all_entities('answers', question_id)
     for ans in all_answers:
         if ans.answer.strip().lower() == answer.strip().lower():  # check if value already exists
-            return custom_response(409, 'Conflict', "Duplicate Value")
+            return custom_response(409, 'Conflict', "Duplicate Value. Answer already exists")
     accepted = 'false'
     date_posted = datetime.datetime.now()
+    # TODO add a user id as well
     new_id = database_obj.add_entity(Answer(0, question_id, 0, answer, accepted, date_posted))
     return jsonify(Answer(new_id, question_id, 0, answer, accepted, date_posted).obj_to_dict()), 201
 
 
 @app.route("/api/v1/questions/<int:questionId>", methods=['DELETE'])
+@jwt_refresh_token_required
 def api_delete_question(questionId):
     """Delete a specific question based on id"""
 
@@ -109,25 +120,24 @@ def api_delete_question(questionId):
 
 
 @app.route("/api/v1/questions/<int:questionId>/answers/<int:answerId>", methods=['PUT'])
+@jwt_refresh_token_required
 def api_update_answer(questionId, answerId):
     """Update an answer to a specific question"""
 
     # get new answer values
     input_data = request.get_json(force=True)
-    if 'answer' not in input_data.keys():
-        return custom_response(400, 'Bad Request', "Request must contain 'answer' data")
-    new_accepted_value = 'false'
-    if 'accepted' in input_data.keys():
-        new_accepted_value = input_data['accepted']
-    new_answer_value = input_data['answer']
 
     all_answers = database_obj.get_all_entities('answers', questionId)
     if all_answers is not None:
         for ans in all_answers:
             if ans.id == answerId:  # check if answer exists
                 # replace old values with new ones if available
-                ans.answer = new_answer_value
-                ans.accepted = new_accepted_value
+                if 'accepted' in input_data.keys():
+                    new_accepted_value = input_data['accepted']
+                    ans.accepted = new_accepted_value
+                if 'answer' in input_data.keys():
+                    new_answer_value = input_data['answer']
+                    ans.answer = new_answer_value
                 database_obj.update_entity(ans)
                 return jsonify(ans.obj_to_dict()), 202  # HTTP_202_ACCEPTED
 
@@ -150,11 +160,17 @@ def register_user():
     if all_users is not None:
         for user in all_users:
             if user.username.strip().lower() == username.strip().lower():  # check if user already exists
-                return custom_response(409, 'Conflict', "Duplicate Value")
+                return custom_response(409, 'Conflict', "Duplicate Value. Username is already taken")
     new_id = database_obj.add_entity(User(0, username, password))  # add to database and return new id
     user_dict = User(new_id, username, sha256.hash(password)).obj_to_dict()
+    # don't show password in the returned JSON
+    del user_dict['password']
+
+    # create tokens
     access_token = create_access_token(identity=username)
+    refresh_token = create_refresh_token(identity=username)
     user_dict['access_token'] = access_token
+    user_dict['refresh_token'] = refresh_token
     return jsonify(user_dict), 201
 
 
@@ -176,13 +192,18 @@ def login_user():
         for user in all_users:
             # verify that password and username match those of a user in the database
             if username.strip() == user.username.strip() and sha256.verify(password, user.password):
-                access_token = create_access_token(identity=username)
+                # don't show password in the returned JSON
                 user_dict = user.obj_to_dict()
+                del user_dict['password']
+
+                # create tokens
+                access_token = create_access_token(identity=username)
                 user_dict['access_token'] = access_token
+                refresh_token = create_refresh_token(identity=username)
+                user_dict['refresh_token'] = refresh_token
                 return jsonify(user_dict), 200  # return user with access token
         # if the iterations do not find any matching user, return message:
         return custom_response(403, 'Forbidden', 'Invalid Login Credentials')
-
     else:
         return custom_response(204, "No Content", "There are no users in store")
 
