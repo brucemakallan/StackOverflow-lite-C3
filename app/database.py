@@ -149,11 +149,11 @@ class Database:
         """Delete a specific question, answer, or user"""
         try:
             if type(entity_obj) is Question:
-                self.cur.execute("DELETE FROM questions WHERE question_id = %s", str(entity_obj.id))
+                self.cur.execute("DELETE FROM questions WHERE question_id = %s", (str(entity_obj.id),))  # add a comma at the end to make it a tuple
             elif type(entity_obj) is Answer:
-                self.cur.execute("DELETE FROM answers WHERE answer_id = %s", str(entity_obj.id))
+                self.cur.execute("DELETE FROM answers WHERE answer_id = %s", (str(entity_obj.id),))
             elif type(entity_obj) is User:
-                self.cur.execute("DELETE FROM users WHERE user_id = %s", str(entity_obj.id))
+                self.cur.execute("DELETE FROM users WHERE user_id = %s", (str(entity_obj.id),))
 
         except (Exception, psycopg2.DatabaseError) as error:
             print(error)
