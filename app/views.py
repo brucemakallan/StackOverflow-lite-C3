@@ -1,7 +1,7 @@
 import datetime
 
 from flask import jsonify, request, make_response
-from flask_jwt_extended import create_access_token, jwt_refresh_token_required, create_refresh_token
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 
 from app import create_app
 from app.database import Database
@@ -18,7 +18,7 @@ database_obj = Database()
 
 
 @app.route("/api/v1/questions", methods=['GET'])
-@jwt_refresh_token_required
+@jwt_required
 def api_get_all_questions():
     """Get all questions"""
 
@@ -34,7 +34,7 @@ def api_get_all_questions():
 
 
 @app.route("/api/v1/questions/<int:question_id>/answers", methods=['GET'])
-@jwt_refresh_token_required
+@jwt_required
 def api_get_answers(question_id):
     """Get all answers to a specific question"""
 
@@ -50,7 +50,7 @@ def api_get_answers(question_id):
 
 
 @app.route("/api/v1/questions/<int:question_id>", methods=['GET'])
-@jwt_refresh_token_required
+@jwt_required
 def api_get_one_question(question_id):
     """Get a specific question using its id"""
 
@@ -63,10 +63,12 @@ def api_get_one_question(question_id):
 
 
 @app.route("/api/v1/questions", methods=['POST'])
-@jwt_refresh_token_required
+@jwt_required
 def api_add_question():
     """Post / Add a new question"""
 
+    # get id of user currently logged in (from authentication token) and save it alongside the question
+    current_user_id = get_jwt_identity()
     input_data = request.get_json(force=True)
     if 'question' not in input_data.keys():
         return custom_response(400, 'Bad Request', "Request must contain 'question' data")
@@ -78,32 +80,39 @@ def api_add_question():
                 return custom_response(409, 'Conflict', "Duplicate Value. Question already exists")
     date_posted = datetime.datetime.now()
     # TODO add a user id as well
-    new_id = database_obj.add_entity(Question(0, 0, question, date_posted))  # add to database and return new id
-    return jsonify(Question(new_id, 0, question, date_posted).obj_to_dict()), 201  # 201 = created
+    new_id = database_obj.add_entity(Question(0, current_user_id, question, date_posted))  # add to database and return new id
+    return jsonify(Question(new_id, current_user_id, question, date_posted).obj_to_dict()), 201  # 201 = created
 
 
 @app.route("/api/v1/questions/<int:question_id>/answers", methods=['POST'])
-@jwt_refresh_token_required
+@jwt_required
 def api_add_answer(question_id):
     """Add an answer to a specific question"""
 
+    # get id of user currently logged in (from authentication token)
+    current_user_id = get_jwt_identity()
     input_data = request.get_json(force=True)
     if 'answer' not in input_data.keys():
         return custom_response(400, 'Bad Request', "Request must contain 'answer' data")
     answer = input_data['answer']
     all_answers = database_obj.get_all_entities('answers', question_id)
-    for ans in all_answers:
-        if ans.answer.strip().lower() == answer.strip().lower():  # check if value already exists
-            return custom_response(409, 'Conflict', "Duplicate Value. Answer already exists")
-    accepted = 'false'
-    date_posted = datetime.datetime.now()
-    # TODO add a user id as well
-    new_id = database_obj.add_entity(Answer(0, question_id, 0, answer, accepted, date_posted))
-    return jsonify(Answer(new_id, question_id, 0, answer, accepted, date_posted).obj_to_dict()), 201
+
+    # make sure the question for which the answer is to be posted is present
+    question = database_obj.get_one_entity('questions', question_id)
+    if question is not None:
+        for ans in all_answers:
+            if ans.answer.strip().lower() == answer.strip().lower():  # check if value already exists
+                return custom_response(409, 'Conflict', "Duplicate Value. Answer already exists")
+        accepted = 'false'
+        date_posted = datetime.datetime.now()
+        new_id = database_obj.add_entity(Answer(0, question_id, current_user_id, answer, accepted, date_posted))
+        return jsonify(Answer(new_id, question_id, current_user_id, answer, accepted, date_posted).obj_to_dict()), 201
+    else:
+        return custom_response(404, 'Not Found', 'Question with id:' + str(question_id) + ' does not exist')
 
 
 @app.route("/api/v1/questions/<int:questionId>", methods=['DELETE'])
-@jwt_refresh_token_required
+@jwt_required
 def api_delete_question(questionId):
     """Delete a specific question based on id"""
 
@@ -120,7 +129,7 @@ def api_delete_question(questionId):
 
 
 @app.route("/api/v1/questions/<int:questionId>/answers/<int:answerId>", methods=['PUT'])
-@jwt_refresh_token_required
+@jwt_required
 def api_update_answer(questionId, answerId):
     """Update an answer to a specific question"""
 
@@ -166,11 +175,9 @@ def register_user():
     # don't show password in the returned JSON
     del user_dict['password']
 
-    # create tokens
-    access_token = create_access_token(identity=username)
-    refresh_token = create_refresh_token(identity=username)
+    # create token
+    access_token = create_access_token(identity=new_id)
     user_dict['access_token'] = access_token
-    user_dict['refresh_token'] = refresh_token
     return jsonify(user_dict), 201
 
 
@@ -196,11 +203,9 @@ def login_user():
                 user_dict = user.obj_to_dict()
                 del user_dict['password']
 
-                # create tokens
-                access_token = create_access_token(identity=username)
+                # create token
+                access_token = create_access_token(identity=user.id)
                 user_dict['access_token'] = access_token
-                refresh_token = create_refresh_token(identity=username)
-                user_dict['refresh_token'] = refresh_token
                 return jsonify(user_dict), 200  # return user with access token
         # if the iterations do not find any matching user, return message:
         return custom_response(403, 'Forbidden', 'Invalid Login Credentials')
