@@ -3,6 +3,7 @@ import psycopg2
 from app.modals.answer import Answer
 from app.modals.question import Question
 from app.modals.user import User
+from passlib.hash import pbkdf2_sha256 as sha256
 
 
 class Database:
@@ -56,7 +57,8 @@ class Database:
                     entity_obj.date_posted))
             elif type(entity_obj) is User:  # for the User object
                 sql = "INSERT INTO users(user_username, user_password) VALUES(%s, %s) RETURNING user_id"
-                self.cur.execute(sql, (entity_obj.username, entity_obj.password))
+                password_hash = sha256.hash(entity_obj.password)
+                self.cur.execute(sql, (entity_obj.username, password_hash))
 
             # return new id after adding
             new_id = self.cur.fetchone()[0]
