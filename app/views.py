@@ -140,14 +140,24 @@ def api_update_answer(questionId, answerId):
         for ans in all_answers:
             if ans.id == answerId:  # check if answer exists
                 # replace old values with new ones if available
+                answer_edited = False
                 if 'accepted' in input_data.keys():
-                    new_accepted_value = input_data['accepted'].strip()
-                    ans.accepted = new_accepted_value
+                    new_accepted_value = input_data['accepted']  # boolean
+                    # validate accepted value (must be a valid boolean value for postgres)
+                    if isinstance(new_accepted_value, bool):
+                        ans.accepted = new_accepted_value
+                        answer_edited = True
+                    else:
+                        return custom_response(400, 'Bad Request', "Provide 'accepted' data as a boolean (true OR false)")
                 if 'answer' in input_data.keys():
                     new_answer_value = input_data['answer'].strip()
                     ans.answer = new_answer_value
-                database_obj.update_entity(ans)
-                return jsonify(ans.obj_to_dict()), 202  # HTTP_202_ACCEPTED
+                    answer_edited = True
+                if answer_edited:
+                    database_obj.update_entity(ans)
+                    return jsonify(ans.obj_to_dict()), 202  # HTTP_202_ACCEPTED
+                else:
+                    return custom_response(400, 'Bad Request', "Provide 'answer' data to edit answer, OR 'accepted' data (as a boolean) to edit accepted status")
 
         # Answer does not exist
         return custom_response(404, 'Not Found', 'No Answer found with id, ' + str(answerId))
@@ -211,6 +221,16 @@ def login_user():
         return custom_response(403, 'Forbidden', 'Invalid Login Credentials')
     else:
         return custom_response(200, "OK", "Request Successful BUT There are no users in store")
+
+
+@app.errorhandler(404)
+def page_not_found(e):  # Page not found
+    return custom_response(404, 'Resource Not Found', 'You are trying to access a resource that does not exist')
+
+
+@app.errorhandler(400)
+def bad_request(e):  # Bad request e.g. missing JSON post request data
+    return custom_response(400, 'Bad request', 'Provide POST request data as valid JSON')
 
 
 def custom_response(status_code, status_message, friendly_message):
