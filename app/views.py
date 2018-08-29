@@ -1,6 +1,8 @@
 import datetime
 
+import jwt
 from flask import jsonify, request, make_response
+from flask_jwt_extended import create_access_token
 
 from app import create_app
 from app.database import Database
@@ -8,7 +10,7 @@ from app.database import Database
 from app.modals.answer import Answer
 from app.modals.question import Question
 from app.modals.user import User
-
+from passlib.hash import pbkdf2_sha256 as sha256
 
 app = create_app()
 
@@ -69,7 +71,7 @@ def api_add_question():
                 return custom_response(409, 'Conflict', "Duplicate Value")
     date_posted = datetime.datetime.now()
     new_id = database_obj.add_entity(Question(0, 0, question, date_posted))  # add to database and return new id
-    return jsonify(Question(new_id, 0, question, date_posted).obj_to_dict()), 201
+    return jsonify(Question(new_id, 0, question, date_posted).obj_to_dict()), 201  # 201 = created
 
 
 @app.route("/api/v1/questions/<int:question_id>/answers", methods=['POST'])
@@ -150,7 +152,39 @@ def register_user():
             if user.username.strip().lower() == username.strip().lower():  # check if user already exists
                 return custom_response(409, 'Conflict', "Duplicate Value")
     new_id = database_obj.add_entity(User(0, username, password))  # add to database and return new id
-    return jsonify(User(new_id, username, password).obj_to_dict()), 201
+    user_dict = User(new_id, username, sha256.hash(password)).obj_to_dict()
+    access_token = create_access_token(identity=username)
+    user_dict['access_token'] = access_token
+    return jsonify(user_dict), 201
+
+
+@app.route("/api/v1/auth/login", methods=['POST'])
+def login_user():
+    """User verification and Login"""
+
+    input_data = request.get_json(force=True)
+
+    # validation check for required values
+    if 'username' not in input_data.keys() or 'password' not in input_data.keys():
+        return custom_response(400, 'Bad Request', "Request must contain 'username' and 'password' data")
+    username = input_data['username']
+    password = input_data['password']
+
+    # get all users and check if username and password match
+    all_users = database_obj.get_all_entities('users')
+    if all_users is not None:
+        for user in all_users:
+            # verify that password and username match those of a user in the database
+            if username.strip() == user.username.strip() and sha256.verify(password, user.password):
+                access_token = create_access_token(identity=username)
+                user_dict = user.obj_to_dict()
+                user_dict['access_token'] = access_token
+                return jsonify(user_dict), 200  # return user with access token
+        # if the iterations do not find any matching user, return message:
+        return custom_response(403, 'Forbidden', 'Invalid Login Credentials')
+
+    else:
+        return custom_response(204, "No Content", "There are no users in store")
 
 
 def custom_response(status_code, status_message, friendly_message):
