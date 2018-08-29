@@ -27,10 +27,10 @@ def api_get_all_questions():
         # Convert the list of objects into a list of dictionaries
         list_of_question_dicts = [question_obj.obj_to_dict() for question_obj in list_of_question_objs]
         if len(list_of_question_dicts) == 0:
-            return custom_response(204, 'No Content', 'There are no Questions in store')
+            return custom_response(200, 'OK', 'Request Successful BUT There are no Questions in store')
         return jsonify(list_of_question_dicts), 200
     else:
-        return custom_response(204, 'No Content', 'There are no Questions in store')
+        return custom_response(200, 'OK', 'Request Successful BUT There are no Questions in store')
 
 
 @app.route("/api/v1/questions/<int:question_id>/answers", methods=['GET'])
@@ -43,10 +43,10 @@ def api_get_answers(question_id):
         # Convert the list of objects into a list of dictionaries
         list_of_answer_dicts = [answer_obj.obj_to_dict() for answer_obj in list_of_answer_objs]
         if len(list_of_answer_dicts) == 0:
-            return custom_response(204, 'No Content', 'There are no Answers in store')
+            return custom_response(200, 'OK', 'Request Successful BUT There are no Answers for this question')
         return jsonify(list_of_answer_dicts), 200
     else:
-        return custom_response(204, 'No Content', 'There are no Answers in store')
+        return custom_response(200, 'OK', 'Request Successful BUT There are no Answers for this question')
 
 
 @app.route("/api/v1/questions/<int:question_id>", methods=['GET'])
@@ -72,14 +72,13 @@ def api_add_question():
     input_data = request.get_json(force=True)
     if 'question' not in input_data.keys():
         return custom_response(400, 'Bad Request', "Request must contain 'question' data")
-    question = input_data['question']
+    question = input_data['question'].strip()
     all_questions = database_obj.get_all_entities('questions')
     if all_questions is not None:
         for qn in all_questions:
             if qn.question.strip().lower() == question.strip().lower():  # check if question already exists
                 return custom_response(409, 'Conflict', "Duplicate Value. Question already exists")
     date_posted = datetime.datetime.now()
-    # TODO add a user id as well
     new_id = database_obj.add_entity(Question(0, current_user_id, question, date_posted))  # add to database and return new id
     return jsonify(Question(new_id, current_user_id, question, date_posted).obj_to_dict()), 201  # 201 = created
 
@@ -94,7 +93,7 @@ def api_add_answer(question_id):
     input_data = request.get_json(force=True)
     if 'answer' not in input_data.keys():
         return custom_response(400, 'Bad Request', "Request must contain 'answer' data")
-    answer = input_data['answer']
+    answer = input_data['answer'].strip()
     all_answers = database_obj.get_all_entities('answers', question_id)
 
     # make sure the question for which the answer is to be posted is present
@@ -125,7 +124,7 @@ def api_delete_question(questionId):
                 return custom_response(202, 'Accepted', 'Question with id, ' + str(questionId) + ' was deleted')
         return custom_response(404, 'Not Found', 'No question in store matching the id')
     else:
-        return custom_response(204, 'No Content', 'There are no Answers in store')
+        return custom_response(200, 'OK', 'Request Successful BUT There are no Answers in store')
 
 
 @app.route("/api/v1/questions/<int:questionId>/answers/<int:answerId>", methods=['PUT'])
@@ -142,10 +141,10 @@ def api_update_answer(questionId, answerId):
             if ans.id == answerId:  # check if answer exists
                 # replace old values with new ones if available
                 if 'accepted' in input_data.keys():
-                    new_accepted_value = input_data['accepted']
+                    new_accepted_value = input_data['accepted'].strip()
                     ans.accepted = new_accepted_value
                 if 'answer' in input_data.keys():
-                    new_answer_value = input_data['answer']
+                    new_answer_value = input_data['answer'].strip()
                     ans.answer = new_answer_value
                 database_obj.update_entity(ans)
                 return jsonify(ans.obj_to_dict()), 202  # HTTP_202_ACCEPTED
@@ -163,7 +162,7 @@ def register_user():
     input_data = request.get_json(force=True)
     if 'username' not in input_data.keys() or 'password' not in input_data.keys():
         return custom_response(400, 'Bad Request', "Request must contain 'username' and 'password' data")
-    username = input_data['username']
+    username = input_data['username'].strip()
     password = input_data['password']
     all_users = database_obj.get_all_entities('users')
     if all_users is not None:
@@ -174,10 +173,10 @@ def register_user():
     user_dict = User(new_id, username, sha256.hash(password)).obj_to_dict()
     # don't show password in the returned JSON
     del user_dict['password']
-
     # create token
     access_token = create_access_token(identity=new_id)
     user_dict['access_token'] = access_token
+    user_dict['msg'] = 'User Registration Successful!'
     return jsonify(user_dict), 201
 
 
@@ -190,7 +189,7 @@ def login_user():
     # validation check for required values
     if 'username' not in input_data.keys() or 'password' not in input_data.keys():
         return custom_response(400, 'Bad Request', "Request must contain 'username' and 'password' data")
-    username = input_data['username']
+    username = input_data['username'].strip()
     password = input_data['password']
 
     # get all users and check if username and password match
@@ -206,11 +205,12 @@ def login_user():
                 # create token
                 access_token = create_access_token(identity=user.id)
                 user_dict['access_token'] = access_token
+                user_dict['msg'] = 'Login Successful!'
                 return jsonify(user_dict), 200  # return user with access token
         # if the iterations do not find any matching user, return message:
         return custom_response(403, 'Forbidden', 'Invalid Login Credentials')
     else:
-        return custom_response(204, "No Content", "There are no users in store")
+        return custom_response(200, "OK", "Request Successful BUT There are no users in store")
 
 
 def custom_response(status_code, status_message, friendly_message):

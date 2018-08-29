@@ -27,7 +27,7 @@ class EndpointsTestCase(unittest.TestCase):
 
         post_response = self.client.post('/api/v1/questions', data=json.dumps(self.test_data_question1), content_type='application/json')
         # check for duplicate value
-        if 'Duplicate Value' in str(post_response.data):
+        if 'Duplicate Value. Question already exists' in str(post_response.data):
             self.assertEqual(post_response.status_code, 409)  # 409 Conflict (Due to duplicate value)
         else:
             self.assertEqual(post_response.status_code, 201)
@@ -40,7 +40,7 @@ class EndpointsTestCase(unittest.TestCase):
         """Run test for: Post a question"""
 
         post_response = self.client.post('/api/v1/questions', data=json.dumps(self.test_data_question2), content_type='application/json')
-        if 'Duplicate Value' in str(post_response.data):
+        if 'Duplicate Value. Question already exists' in str(post_response.data):
             self.assertEqual(post_response.status_code, 409)  # 409 Conflict (Due to duplicate value)
         else:
             self.assertEqual(post_response.status_code, 201)
@@ -51,13 +51,13 @@ class EndpointsTestCase(unittest.TestCase):
 
         post_response = self.client.post('/api/v1/questions', data=json.dumps(self.test_data_question1), content_type='application/json')
         self.assertEqual(post_response.status_code, 409)  # 409 Conflict (Due to duplicate value)
-        self.assertIn('Duplicate Value', str(post_response.data))  # check for 'Duplicate Value' error message
+        self.assertIn('Duplicate Value. Question already exists', str(post_response.data))  # check for 'Duplicate Value' error message
 
     def test_get_one_question(self):
         """Run test for: Get one question using its id"""
 
         post_response = self.client.post('/api/v1/questions', data=json.dumps(self.test_data_question3), content_type='application/json')
-        if 'Duplicate Value' in str(post_response.data):
+        if 'Duplicate Value. Question already exists' in str(post_response.data):
             self.assertEqual(post_response.status_code, 409)  # 409 Conflict (Due to duplicate value)
         else:
             self.assertEqual(post_response.status_code, 201)
@@ -69,7 +69,7 @@ class EndpointsTestCase(unittest.TestCase):
         """Run test for: Post an answer to a specific question"""
 
         post_response = self.client.post('/api/v1/questions/1/answers', data=json.dumps(self.test_data_answer), content_type='application/json')
-        if 'Duplicate Value' in str(post_response.data):
+        if 'Duplicate Value. Answer already exists' in str(post_response.data):
             self.assertEqual(post_response.status_code, 409)  # 409 Conflict (Due to duplicate value)
         else:
             self.assertEqual(post_response.status_code, 201)
