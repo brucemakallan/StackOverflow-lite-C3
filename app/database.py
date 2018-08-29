@@ -158,6 +158,13 @@ class Database:
         except (Exception, psycopg2.DatabaseError) as error:
             print(error)
 
+    def delete_entity_by_value(self, table_name, column_name, entity_value):
+        """Delete a specific database entity by identified by its value"""
+        try:
+            self.cur.execute("DELETE FROM " + table_name + " WHERE " + column_name + " = %s", (entity_value,))
+        except (Exception, psycopg2.DatabaseError) as error:
+            print(error)
+
     def drop_table(self, tablename):
         """Drop the table passed"""
         try:

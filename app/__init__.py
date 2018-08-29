@@ -1,9 +1,6 @@
 from flask import Flask
 
-from config import app_config
 
-
-def create_app(config_name='development'):  # set default value as development
+def create_app():
     app = Flask(__name__)
-    app.config.from_object(app_config[config_name])
     return app
