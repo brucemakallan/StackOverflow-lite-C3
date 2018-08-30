@@ -6,6 +6,7 @@ https://brucemakallan.github.io/StackOverflow-lite/UI/
 
 [![Build Status](https://travis-ci.com/brucemakallan/StackOverflow-lite-C3.svg?branch=master)](https://travis-ci.com/brucemakallan/StackOverflow-lite-C3)
 [![Coverage Status](https://coveralls.io/repos/github/brucemakallan/StackOverflow-lite-C3/badge.svg?branch=master)](https://coveralls.io/github/brucemakallan/StackOverflow-lite-C3?branch=master)
+[![Maintainability](https://api.codeclimate.com/v1/badges/91c99af092866e94cfab/maintainability)](https://codeclimate.com/github/brucemakallan/StackOverflow-lite-C3/maintainability)
     
 
 ## Main Features

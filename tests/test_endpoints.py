@@ -1,7 +1,6 @@
 import unittest
 
 from flask import json
-from flask_jwt_extended import JWTManager
 
 from app.database import Database
 from app.views import app
@@ -20,10 +19,12 @@ class EndpointsTestCase(unittest.TestCase):
         self.test_data_answer = dict(answer="Test answer sample one")
         self.user_data = dict(username="jane", password="pass")
         self.user_data2 = dict(username="annie", password="pass")
+        self.user_data3 = dict(username="jane", password="password")
+        self.wrong_token = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE1MzU2NjgmmTAsIm5iZiI6MTUzNTY2ODU1MCwianRpIjoiZjA0MTVmODUtYjBkNC00MWYwLWFmMTAtNzU5YjhmNzgxY2Q0IiwiZXhwIjoxNTM1NjY5NDUwLCJpZGVudGl0eSI6MSwiZnJlc2giOmZhbHNlLCJ0eXBlIjoiYWNjZXNzIn0.9WTmhO49Ta2M3tvNuuUME52zObxW14jenCsIOFKo_cg'
 
-        self.database_obj = Database()  # connection to the database
-        app.config['JWT_SECRET_KEY'] = 'kk38e1c32de0961d5d3bfb14f8a66e006cfb1cfbf3f0c0f5'
-        JWTManager(app)
+        # connect to the database using current App-Settings
+        # set APP_SETTINGS="testing"
+        self.database_obj = Database()
 
         # get Authorization token (used for all protected endpoints)
         signup_response = self.client.post('/api/v1/auth/signup',
@@ -32,7 +33,7 @@ class EndpointsTestCase(unittest.TestCase):
         token_json_dict = json.loads(signup_response.data.decode())
         self.access_token = token_json_dict['access_token']
 
-    # test for endpoints. Run using $pytest
+    # test for endpoints. Run using $pytest --cov=app/
     def test_sign_up(self):
         """Run test for: Register a new User"""
         signup_response = self.client.post('/api/v1/auth/signup',
@@ -40,6 +41,32 @@ class EndpointsTestCase(unittest.TestCase):
                                            content_type='application/json')
         self.assertIn("jane", str(signup_response.data))  # check if test username is returned after signup as it should
         self.assertEqual(signup_response.status_code, 201)  # 201: Created
+
+    def test_login(self):
+        """Run test for: Successful Login"""
+        self.test_sign_up()
+        login_response = self.client.post('/api/v1/auth/login',
+                                          data=json.dumps(self.user_data),
+                                          content_type='application/json')
+        self.assertIn("jane", str(login_response.data))
+        self.assertEqual(login_response.status_code, 200)
+
+    def test_invalid_login(self):
+        """Run test for: Invalid login credentials"""
+        self.test_sign_up()
+        login_response = self.client.post('/api/v1/auth/login',
+                                          data=json.dumps(self.user_data3),
+                                          content_type='application/json')
+        self.assertIn("Invalid Login Credentials", str(login_response.data))
+        self.assertEqual(login_response.status_code, 403)  # 403 Forbidden
+
+    def test_no_authorization(self):
+        """Run test for: Wrong access token"""
+        post_response = self.client.post('/api/v1/questions',
+                                         data=json.dumps(self.test_data_question2),
+                                         content_type='application/json',
+                                         headers={'Authorization': 'Bearer {}'.format(self.wrong_token)})
+        self.assertIn('Signature verification failed', str(post_response.data))
 
     def test_post_question(self):
         """Run test for: Post a question"""
@@ -66,9 +93,9 @@ class EndpointsTestCase(unittest.TestCase):
         """Run test for: Post a duplicate question"""
 
         self.client.post('/api/v1/questions',
-                                         data=json.dumps(self.test_data_question1),
-                                         content_type='application/json',
-                                         headers={'Authorization': 'Bearer {}'.format(self.access_token)})
+                         data=json.dumps(self.test_data_question1),
+                         content_type='application/json',
+                         headers={'Authorization': 'Bearer {}'.format(self.access_token)})
         # post again and run test for Duplicate Value
         post_response = self.client.post('/api/v1/questions',
                                          data=json.dumps(self.test_data_question1),
@@ -76,20 +103,6 @@ class EndpointsTestCase(unittest.TestCase):
                                          headers={'Authorization': 'Bearer {}'.format(self.access_token)})
         self.assertEqual(post_response.status_code, 409)  # 409 Conflict (Due to duplicate value)
         self.assertIn('Duplicate Value. Question already exists', str(post_response.data))  # check for error message
-
-    # def test_get_one_question(self):
-    #     """Run test for: Get one question using its id"""
-    #     # read all questions, get one question's id and try to read it from the database using that id
-    #     response_data = self.test_get_all_questions()
-    #     all_questions_list = json.loads(response_data.data.decode())
-    #     sample_question = all_questions_list[0]
-    #     url = '/api/v1/questions/' + str(sample_question['id'])
-    #     get_response = self.client.get(url,
-    #                                    content_type='application/json',
-    #                                    data=json.loads(response_data.data.decode()),
-    #                                    headers={'Authorization': 'Bearer {}'.format(self.access_token)})
-    #     self.assertEqual(get_response.status_code, 200)
-    #     self.assertIn(str(sample_question['id']), str(get_response.data))
 
     def test_post_answer(self):
         """Run test for: Post an answer to a specific question"""
@@ -105,12 +118,14 @@ class EndpointsTestCase(unittest.TestCase):
         self.assertEqual(post_response.status_code, 201)
         self.assertIn('Test answer sample one', str(post_response.data))
 
+    def test_invalid_urls(self):
+        """Run test for: Invalid URLs"""
+        get_response = self.client.get('/api/v1/abc',
+                                       content_type='application/json')
+        self.assertIn('Resource Not Found', str(get_response.data))
+        self.assertEqual(get_response.status_code, 404)  # 404 NOT FOUND
+
     def tearDown(self):
-        """Remove all sample entities used from database"""
-        self.database_obj.delete_entity_by_value("users", "user_username", "annie")
-        self.database_obj.delete_entity_by_value("users", "user_username", "jane")
-        self.database_obj.delete_entity_by_value("questions", "question_question", "Test question sample one")
-        self.database_obj.delete_entity_by_value("questions", "question_question", "Test question sample two")
-        self.database_obj.delete_entity_by_value("questions", "question_question", "Test question sample three")
-        self.database_obj.delete_entity_by_value("questions", "question_question", "Test question sample four")
-        self.database_obj.delete_entity_by_value("answers", "answer_answer", "Test answer sample one")
+        """Drop all tables in the TEST database"""
+        tables = ['users', 'answers', 'questions']
+        self.database_obj.drop_all_tables(tables)
