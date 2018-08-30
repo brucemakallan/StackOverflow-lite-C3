@@ -1,4 +1,5 @@
 import psycopg2
+import os
 
 from app.modals.answer import Answer
 from app.modals.question import Question
@@ -11,7 +12,11 @@ class Database:
     def __init__(self):
         """Connect to the database"""
         try:
-            self.conn = psycopg2.connect("dbname='stackoverflow' user='postgres' host='localhost' password='postgres' port='5432'")
+            # use the current environment to determine which database to use
+            database = 'stackoverflow'
+            if os.getenv('APP_SETTINGS') == 'testing':
+                database = 'stackoverflowtest'
+            self.conn = psycopg2.connect("dbname='" + database + "' user='postgres' host='localhost' password='postgres' port='5432'")
             self.conn.autocommit = True
             self.cur = self.conn.cursor()
 
@@ -169,5 +174,13 @@ class Database:
         """Drop the table passed"""
         try:
             self.cur.execute("DROP TABLE " + tablename)
+        except (Exception, psycopg2.DatabaseError) as error:
+            print(error)
+
+    def drop_all_tables(self, tables):
+        """Drop all tables passed in list"""
+        try:
+            for table in tables:
+                self.cur.execute("DROP TABLE " + table)
         except (Exception, psycopg2.DatabaseError) as error:
             print(error)

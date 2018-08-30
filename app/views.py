@@ -1,4 +1,5 @@
 import datetime
+import os
 
 from flask import jsonify, request, make_response
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
@@ -11,7 +12,10 @@ from app.modals.question import Question
 from app.modals.user import User
 from passlib.hash import pbkdf2_sha256 as sha256
 
-app = create_app()
+config_name = os.getenv('APP_SETTINGS')  # config_name is set from the terminal: set APP_SETTINGS=environment
+if not config_name:
+    config_name = 'development'  # set default
+app = create_app(config_name)
 
 # get database object for connection to the database
 database_obj = Database()

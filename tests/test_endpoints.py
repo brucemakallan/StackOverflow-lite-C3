@@ -1,7 +1,6 @@
 import unittest
 
 from flask import json
-from flask_jwt_extended import JWTManager
 
 from app.database import Database
 from app.views import app
@@ -21,9 +20,9 @@ class EndpointsTestCase(unittest.TestCase):
         self.user_data = dict(username="jane", password="pass")
         self.user_data2 = dict(username="annie", password="pass")
 
-        self.database_obj = Database()  # connection to the database
-        app.config['JWT_SECRET_KEY'] = 'kk38e1c32de0961d5d3bfb14f8a66e006cfb1cfbf3f0c0f5'
-        JWTManager(app)
+        # connect to the database using current App-Settings
+        # set APP_SETTINGS="testing"
+        self.database_obj = Database()
 
         # get Authorization token (used for all protected endpoints)
         signup_response = self.client.post('/api/v1/auth/signup',
@@ -106,11 +105,6 @@ class EndpointsTestCase(unittest.TestCase):
         self.assertIn('Test answer sample one', str(post_response.data))
 
     def tearDown(self):
-        """Remove all sample entities used from database"""
-        self.database_obj.delete_entity_by_value("users", "user_username", "annie")
-        self.database_obj.delete_entity_by_value("users", "user_username", "jane")
-        self.database_obj.delete_entity_by_value("questions", "question_question", "Test question sample one")
-        self.database_obj.delete_entity_by_value("questions", "question_question", "Test question sample two")
-        self.database_obj.delete_entity_by_value("questions", "question_question", "Test question sample three")
-        self.database_obj.delete_entity_by_value("questions", "question_question", "Test question sample four")
-        self.database_obj.delete_entity_by_value("answers", "answer_answer", "Test answer sample one")
+        """Drop all tables in the TEST database"""
+        tables = ['users', 'answers', 'questions']
+        self.database_obj.drop_all_tables(tables)
