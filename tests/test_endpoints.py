@@ -77,19 +77,19 @@ class EndpointsTestCase(unittest.TestCase):
         self.assertEqual(post_response.status_code, 409)  # 409 Conflict (Due to duplicate value)
         self.assertIn('Duplicate Value. Question already exists', str(post_response.data))  # check for error message
 
-    def test_get_one_question(self):
-        """Run test for: Get one question using its id"""
-        # read all questions, get one question's id and try to read it from the database using that id
-        response_data = self.test_get_all_questions()
-        all_questions_list = json.loads(response_data.data.decode())
-        sample_question = all_questions_list[0]
-        url = '/api/v1/questions/' + str(sample_question['id'])
-        get_response = self.client.get(url,
-                                       content_type='application/json',
-                                       data=json.loads(response_data.data.decode()),
-                                       headers={'Authorization': 'Bearer {}'.format(self.access_token)})
-        self.assertEqual(get_response.status_code, 200)
-        self.assertIn(str(sample_question['id']), str(get_response.data))
+    # def test_get_one_question(self):
+    #     """Run test for: Get one question using its id"""
+    #     # read all questions, get one question's id and try to read it from the database using that id
+    #     response_data = self.test_get_all_questions()
+    #     all_questions_list = json.loads(response_data.data.decode())
+    #     sample_question = all_questions_list[0]
+    #     url = '/api/v1/questions/' + str(sample_question['id'])
+    #     get_response = self.client.get(url,
+    #                                    content_type='application/json',
+    #                                    data=json.loads(response_data.data.decode()),
+    #                                    headers={'Authorization': 'Bearer {}'.format(self.access_token)})
+    #     self.assertEqual(get_response.status_code, 200)
+    #     self.assertIn(str(sample_question['id']), str(get_response.data))
 
     def test_post_answer(self):
         """Run test for: Post an answer to a specific question"""
