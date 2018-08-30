@@ -11,9 +11,8 @@ install:
 services:
   - postgresql
 before_script:
-  - psql -c 'create database stackoverflowtest;' -U postgres
+  - psql -c 'create database stackoverflow;' -U postgres
 script:
   - pytest --cov=app/
-  - pytest --cov=tests/
 after_success:
   - coveralls
