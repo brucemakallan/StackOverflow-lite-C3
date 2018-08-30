@@ -81,6 +81,8 @@ def api_add_question():
     if 'question' not in input_data.keys():
         return custom_response(400, 'Bad Request', "Request must contain 'question' data")
     question = input_data['question'].strip()
+    if len(question) == 0:
+        return custom_response(400, 'Bad Request', "Provide a value for question")
     all_questions = database_obj.get_all_entities('questions')
     if all_questions is not None:
         for qn in all_questions:
@@ -102,6 +104,8 @@ def api_add_answer(question_id):
     if 'answer' not in input_data.keys():
         return custom_response(400, 'Bad Request', "Request must contain 'answer' data")
     answer = input_data['answer'].strip()
+    if len(answer) == 0:
+        return custom_response(400, 'Bad Request', "Provide a value for answer")
     all_answers = database_obj.get_all_entities('answers', question_id)
 
     # make sure the question for which the answer is to be posted is present
@@ -159,6 +163,8 @@ def api_update_answer(questionId, answerId):
                         return custom_response(400, 'Bad Request', "Provide 'accepted' data as a boolean (true OR false)")
                 if 'answer' in input_data.keys():
                     new_answer_value = input_data['answer'].strip()
+                    if len(new_accepted_value) == 0:
+                        return custom_response(400, 'Bad Request', "Provide a value for 'answer'")
                     ans.answer = new_answer_value
                     answer_edited = True
                 if answer_edited:
@@ -180,8 +186,12 @@ def register_user():
     input_data = request.get_json(force=True)
     if 'username' not in input_data.keys() or 'password' not in input_data.keys():
         return custom_response(400, 'Bad Request', "Request must contain 'username' and 'password' data")
-    username = input_data['username'].strip()
+    username = input_data['username']
+    if len(str(username).strip()) == 0:
+        return custom_response(400, 'Bad Request', "Provide a username")
     password = input_data['password']
+    if len(str(password).strip()) == 0:
+        return custom_response(400, 'Bad Request', "Provide a password")
     all_users = database_obj.get_all_entities('users')
     if all_users is not None:
         for user in all_users:
@@ -208,7 +218,11 @@ def login_user():
     if 'username' not in input_data.keys() or 'password' not in input_data.keys():
         return custom_response(400, 'Bad Request', "Request must contain 'username' and 'password' data")
     username = input_data['username'].strip()
+    if len(username) == 0:
+        return custom_response(400, 'Bad Request', "Provide a username")
     password = input_data['password']
+    if len(password.strip()) == 0:
+        return custom_response(400, 'Bad Request', "Provide a password")
 
     # get all users and check if username and password match
     all_users = database_obj.get_all_entities('users')
