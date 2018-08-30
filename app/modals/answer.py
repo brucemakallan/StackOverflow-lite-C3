@@ -1,8 +1,9 @@
 class Answer:
 
-    def __init__(self, id, question_id, answer, accepted, date_posted):
+    def __init__(self, id, question_id, user_id, answer, accepted, date_posted):
         self.id = id
         self.question_id = question_id
+        self.user_id = user_id
         self.answer = answer
         self.accepted = accepted
         self.date_posted = date_posted
@@ -11,8 +12,8 @@ class Answer:
         answer_dict = dict()
         answer_dict['id'] = self.id
         answer_dict['question_id'] = self.question_id
+        answer_dict['user_id'] = self.user_id
         answer_dict['answer'] = self.answer
         answer_dict['accepted'] = self.accepted
         answer_dict['date_posted'] = self.date_posted
         return answer_dict
-

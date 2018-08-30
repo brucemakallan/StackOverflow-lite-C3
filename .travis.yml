@@ -8,7 +8,11 @@ install:
   - pip install pytest
   - pip install pytest-cov
   - pip install coveralls
+services:
+  - postgresql
+before_script:
+  - psql -c 'create database stackoverflow;' -U postgres
 script:
-  - pytest --cov=app/tests
+  - pytest --cov=app/
 after_success:
   - coveralls
