@@ -33,8 +33,8 @@ class Answer:
         try:
             answers_list = []
             cur.execute(
-                "SELECT answer_id, question_id, user_id, answer_answer, answer_accepted, answer_date_posted FROM answers WHERE question_id = " +
-                str(question_id))
+                """SELECT answer_id, question_id, user_id, answer_answer, answer_accepted, answer_date_posted 
+                  FROM answers WHERE question_id = """ + str(question_id))
             row = cur.fetchone()
             while row is not None:
                 answers_list.append(Answer(row[0], row[1], row[2], row[3], row[4], row[5]))
@@ -49,8 +49,8 @@ class Answer:
         try:
             answer = None
             cur.execute(
-                "SELECT answer_id, question_id, user_id, answer_answer, answer_accepted, answer_date_posted FROM answers WHERE answer_id=" + str(
-                    answer_id))
+                """SELECT answer_id, question_id, user_id, answer_answer, answer_accepted, answer_date_posted 
+                  FROM answers WHERE answer_id=""" + str(answer_id))
             row = cur.fetchone()
             if row is not None:
                 answer = Answer(row[0], row[1], row[2], row[3], row[4], row[5])
