@@ -6,14 +6,11 @@ class Database:
     def __init__(self, app):
         """Connect to the database and create all tables"""
         try:
-            # get database from configurations (based on current environment)
-            database = app.config["DATABASE"]
-
-            # connect to the database selected
-            self.conn = psycopg2.connect(database=database,
-                                         user='postgres',
-                                         host='localhost',
-                                         password='postgres',
+            # for the heroku branch
+            self.conn = psycopg2.connect(database='d5g3patm2s6vj',
+                                         user='agikqinoonguyv',
+                                         host='ec2-107-22-221-60.compute-1.amazonaws.com',
+                                         password='da72d017ba9554c5fcfa2894904843482f289b72e7d7d294eb9569de32d509c5',
                                          port='5432')
             self.conn.autocommit = True
             self.cur = self.conn.cursor()
