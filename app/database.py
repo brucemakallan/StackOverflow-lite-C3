@@ -3,7 +3,7 @@ import psycopg2
 
 class Database:
 
-    def __init__(self):
+    def __init__(self, app):
         """Connect to the database and create all tables"""
         try:
             # for the heroku branch
@@ -19,6 +19,8 @@ class Database:
             commands = ["""CREATE TABLE IF NOT EXISTS users (
                                 user_id SERIAL PRIMARY KEY, 
                                 user_username VARCHAR(255) NOT NULL, 
+                                user_full_name VARCHAR(255) NOT NULL,
+                                user_email VARCHAR(255) NOT NULL,
                                 user_password VARCHAR(255) NOT NULL 
                             )""",
                         """CREATE TABLE IF NOT EXISTS questions (

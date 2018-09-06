@@ -30,7 +30,7 @@ class Question:
             row = cur.fetchone()
             while row is not None:
                 questions_list.append(Question(row[0], row[1], row[2], row[3]))
-                row =cur.fetchone()
+                row = cur.fetchone()
             return questions_list
         except (Exception, psycopg2.DatabaseError) as error:
             print(error)
@@ -41,8 +41,8 @@ class Question:
         try:
             question = None
             cur.execute(
-                "SELECT question_id, user_id, question_question, question_date_posted FROM questions WHERE question_id=" + str(
-                    question_id))
+                """SELECT question_id, user_id, question_question, question_date_posted 
+                  FROM questions WHERE question_id=""" + str(question_id))
             row = cur.fetchone()
             if row is not None:
                 question = Question(row[0], row[1], row[2], row[3])
