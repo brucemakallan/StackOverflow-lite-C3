@@ -42,19 +42,20 @@ def api_get_answers(question_id):
 def api_get_one_question(question_id):
     """Get a specific question using its id. Also fetch all answers for the question"""
 
-    question_and_answers = dict()
+    questions_with_answers = dict()
     question_obj = Question.read_one(db.cur, question_id)
-    Validator.is_attribute_present(question_obj, 'Question with id:' + str(question_id) + ' does not exist')
+    if question_obj is None:
+        return Validator.custom_response(404, 'Not Found', 'Question with id:' + str(question_id) + ' does not exist')
 
     # get all answers for the question
-    question_and_answers['question'] = question_obj.obj_to_dict()
+    questions_with_answers['question'] = question_obj.obj_to_dict()
     answers_list = Answer.read_all(db.cur, question_id)
     if answers_list is not None:
         list_of_answer_dicts = [answer_obj.obj_to_dict() for answer_obj in answers_list]
         if len(list_of_answer_dicts) > 0:
-            question_and_answers['answers'] = list_of_answer_dicts
+            questions_with_answers['answers'] = list_of_answer_dicts
 
-    return jsonify(question_and_answers), 200
+    return jsonify(questions_with_answers), 200
 
 
 @app.route("/api/v1/questions", methods=['POST'])
@@ -64,9 +65,12 @@ def api_add_question():
 
     # get id of user currently logged in (from authentication token) and save it alongside the question
     current_user_id = get_jwt_identity()
-    question = Validator.get_json_data('question', request.get_json(force=True), "Request must contain 'question' data")
-    Validator.check_if_empty(question, "Provide a value for question")
-
+    input_data = request.get_json(force=True)
+    if 'question' not in input_data.keys():
+        return Validator.custom_response(400, 'Bad Request', "Request must contain 'question' data")
+    question = input_data['question'].strip()
+    if len(question) == 0:
+        return Validator.custom_response(400, 'Bad Request', "Provide a value for question")
     all_questions = Question.read_all(db.cur)
     if all_questions is not None:
         for qn in all_questions:
@@ -84,8 +88,12 @@ def api_add_answer(question_id):
 
     # get id of user currently logged in (from authentication token)
     current_user_id = get_jwt_identity()
-    answer = Validator.get_json_data('answer', request.get_json(force=True), "Request must contain 'answer' data")
-    Validator.check_if_empty(answer, "Provide a value for answer")
+    input_data = request.get_json(force=True)
+    if 'answer' not in input_data.keys():
+        return Validator.custom_response(400, 'Bad Request', "Request must contain 'answer' data")
+    answer = input_data['answer'].strip()
+    if len(answer) == 0:
+        return Validator.custom_response(400, 'Bad Request', "Provide a value for answer")
     all_answers = Answer.read_all(db.cur, question_id)
 
     # make sure the question for which the answer is to be posted is present
@@ -141,8 +149,7 @@ def api_update_answer(question_id, answer_id):
                         ans.accepted = new_accepted_value
                         answer_edited = True
                     else:
-                        return Validator.custom_response(400,
-                                                         'Bad Request',
+                        return Validator.custom_response(400, 'Bad Request',
                                                          "Provide 'accepted' data as a boolean (true OR false)")
                 if 'answer' in input_data.keys():
                     new_answer_value = input_data['answer'].strip()
@@ -156,7 +163,7 @@ def api_update_answer(question_id, answer_id):
                 else:
                     return Validator.custom_response(400, 'Bad Request',
                                                      """Provide 'answer' data to edit answer, 
-                                                        OR 'accepted' data (as a boolean) to edit accepted status""")
+                                                     OR 'accepted' data (as a boolean) to edit accepted status""")
 
         # Answer does not exist
         return Validator.custom_response(404, 'Not Found', 'No Answer found with id, ' + str(answer_id))
@@ -170,21 +177,32 @@ def register_user():
 
     # validate presence of appropriate data
     input_data = request.get_json(force=True)
-    username = Validator.get_json_data('username', input_data, "Request must contain 'username' data")
-    full_name = Validator.get_json_data('full_name', input_data, "Request must contain 'full_name' data")
-    email = Validator.get_json_data('email', input_data, "Request must contain 'email' data")
-    password = Validator.get_json_data('password', input_data, "Request must contain 'password' data", strip=False)
-    retype_password = Validator.get_json_data('retype_password', input_data,
-                                              "Request must contain 'retype_password' data", strip=False)
+    if 'username' not in input_data.keys():
+        return Validator.custom_response(400, 'Bad Request', "Request must contain 'username' data")
+    if 'full_name' not in input_data.keys():
+        return Validator.custom_response(400, 'Bad Request', "Request must contain 'full_name' data")
+    if 'email' not in input_data.keys():
+        return Validator.custom_response(400, 'Bad Request', "Request must contain 'email' data")
+    if 'password' not in input_data.keys():
+        return Validator.custom_response(400, 'Bad Request', "Request must contain 'password' data")
+    if 'retype_password' not in input_data.keys():
+        return Validator.custom_response(400, 'Bad Request', "Request must contain 'retype_password' data")
 
-    Validator.check_if_empty(username, "Provide a username")
-    Validator.check_if_empty(full_name, "Provide a name")
-    Validator.check_if_empty(email, "Provide an email address")
-    Validator.check_if_empty(retype_password, "Retype password")
-
-    # check for proper password length
+    username = input_data['username']
+    if len(str(username).strip()) == 0:
+        return Validator.custom_response(400, 'Bad Request', "Provide a username")
+    password = input_data['password']
     if len(str(password)) < 6:
         return Validator.custom_response(400, 'Bad Request', "Password must be at least 6 characters long")
+    full_name = input_data['full_name']
+    if len(str(full_name).strip()) == 0:
+        return Validator.custom_response(400, 'Bad Request', "Provide a name")
+    email = input_data['email']
+    if len(str(email).strip()) == 0:
+        return Validator.custom_response(400, 'Bad Request', "Provide an email address")
+    retype_password = input_data['retype_password']
+    if len(str(retype_password)) == 0:
+        return Validator.custom_response(400, 'Bad Request', "Retype password")
 
     # check if user already exists (compare username, email)
     all_users = User.read_all(db.cur)
@@ -217,10 +235,14 @@ def login_user():
     input_data = request.get_json(force=True)
 
     # validation check for required values
-    username = Validator.get_json_data('username', input_data, "Request must contain 'username' data")
-    password = Validator.get_json_data('password', input_data, "Request must contain 'password' data", strip=False)
-    Validator.check_if_empty(username, "Provide a username")
-    Validator.check_if_empty(password, "Provide a password")
+    if 'username' not in input_data.keys() or 'password' not in input_data.keys():
+        return Validator.custom_response(400, 'Bad Request', "Request must contain 'username' and 'password' data")
+    username = input_data['username'].strip()
+    if len(username) == 0:
+        return Validator.custom_response(400, 'Bad Request', "Provide a username")
+    password = input_data['password']
+    if len(password.strip()) == 0:
+        return Validator.custom_response(400, 'Bad Request', "Provide a password")
 
     # get all users and check if username and password match
     all_users = User.read_all(db.cur)

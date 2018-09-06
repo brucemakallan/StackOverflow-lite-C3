@@ -15,25 +15,6 @@ class Validator(object):
             return Validator.custom_response(200, 'OK', no_content_msg)
 
     @staticmethod
-    def is_attribute_present(attribute, not_found_msg):
-        if attribute is None:
-            return Validator.custom_response(404, 'Not Found', not_found_msg)
-
-    @staticmethod
-    def get_json_data(attribute, input_data, missing_attribute_msg, strip=True):
-        if attribute not in input_data.keys():
-            return Validator.custom_response(400, 'Bad Request', missing_attribute_msg)
-        if strip:
-            return input_data[attribute].strip()
-        else:
-            return input_data[attribute]
-
-    @staticmethod
-    def check_if_empty(attribute, if_empty_msg):
-        if len(attribute) == 0:
-            return Validator.custom_response(400, 'Bad Request', if_empty_msg)
-
-    @staticmethod
     def custom_response(status_code, status_message, friendly_message):
         """Return a response with Status Code, its corresponding message, and a friendly message"""
 
