@@ -125,7 +125,7 @@ def api_delete_question(question_id):
                                                  'Question with id, ' + str(question_id) + ' was deleted')
         return Validator.custom_response(404, 'Not Found', 'No question in store matching the id')
     else:
-        return Validator.custom_response(200, 'OK', 'Request Successful BUT There are no Answers in store')
+        return Validator.custom_response(200, 'OK', 'Request Successful BUT There are no Questions in store')
 
 
 @app.route("/api/v1/questions/<int:question_id>/answers/<int:answer_id>", methods=['PUT'])
