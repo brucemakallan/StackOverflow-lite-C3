@@ -30,7 +30,6 @@ class EndpointsTestCase(unittest.TestCase):
                                            data=json.dumps(TestData.user_data),
                                            content_type='application/json')
         # check if test user data is returned after signup as it should
-        self.assertIn("jane", str(signup_response.data))
         self.assertIn("Jane Doe", str(signup_response.data))
         self.assertIn("jane@gmail.com", str(signup_response.data))
         self.assertEqual(signup_response.status_code, 201)  # 201: Created
@@ -41,7 +40,6 @@ class EndpointsTestCase(unittest.TestCase):
         login_response = self.client.post('/api/v1/auth/login',
                                           data=json.dumps(TestData.user_data),
                                           content_type='application/json')
-        self.assertIn("jane", str(login_response.data))
         self.assertIn("Jane Doe", str(login_response.data))
         self.assertIn("jane@gmail.com", str(login_response.data))
         self.assertEqual(login_response.status_code, 200)
