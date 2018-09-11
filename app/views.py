@@ -1,6 +1,7 @@
 import datetime
 import os
 
+import re
 from flask import jsonify, request
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 
@@ -104,8 +105,8 @@ def api_add_answer(question_id):
                 return Validator.custom_response(409, 'Conflict', "Duplicate Value. Answer already exists")
         accepted = 'false'
         date_posted = datetime.datetime.now()
-        new_id = Answer(0, question_id, current_user_id, answer, accepted, date_posted).create(db.cur)
-        return jsonify(Answer(new_id, question_id, current_user_id, answer, accepted, date_posted).obj_to_dict()), 201
+        new_id = Answer(0, question_id, current_user_id, answer, 0, accepted, date_posted).create(db.cur)
+        return jsonify(Answer(new_id, question_id, current_user_id, answer, 0, accepted, date_posted).obj_to_dict()), 201
     else:
         return Validator.custom_response(404, 'Not Found', 'Question with id:' + str(question_id) + ' does not exist')
 
@@ -120,12 +121,16 @@ def api_delete_question(question_id):
     if all_questions is not None:
         for qn in all_questions:
             if qn.id == question_id:
+                # only the owner of the question can delete it
+                if qn.user_id != get_jwt_identity():
+                    return Validator.custom_response(403, 'Forbidden',
+                                                     "You do not have permission to delete this question")
                 qn.delete(db.cur)
                 return Validator.custom_response(202, 'Accepted',
                                                  'Question with id, ' + str(question_id) + ' was deleted')
         return Validator.custom_response(404, 'Not Found', 'No question in store matching the id')
     else:
-        return Validator.custom_response(200, 'OK', 'Request Successful BUT There are no Answers in store')
+        return Validator.custom_response(200, 'OK', 'Request Successful BUT There are no Questions in store')
 
 
 @app.route("/api/v1/questions/<int:question_id>/answers/<int:answer_id>", methods=['PUT'])
@@ -146,6 +151,11 @@ def api_update_answer(question_id, answer_id):
                     new_accepted_value = input_data['accepted']  # boolean
                     # validate accepted value (must be a valid boolean value for postgres)
                     if isinstance(new_accepted_value, bool):
+                        # make sure it's the user who posted the question accepting the answer
+                        qn = Question.read_one(db.cur, question_id)
+                        if qn.user_id != get_jwt_identity():
+                            return Validator.custom_response(403, 'Forbidden',
+                                                             "You do not have permission to accept this answer")
                         ans.accepted = new_accepted_value
                         answer_edited = True
                     else:
@@ -155,15 +165,31 @@ def api_update_answer(question_id, answer_id):
                     new_answer_value = input_data['answer'].strip()
                     if len(new_answer_value) == 0:
                         return Validator.custom_response(400, 'Bad Request', "Provide a value for 'answer'")
+                    if ans.user_id != get_jwt_identity():  # only the answer owner can edit it
+                        return Validator.custom_response(403, 'Forbidden',
+                                                         "You do not have permission to edit this answer")
                     ans.answer = new_answer_value
                     answer_edited = True
+
+                if 'vote' in input_data.keys():
+                    new_vote_value = input_data['vote']  # boolean
+                    if isinstance(new_vote_value, bool):
+                        if new_vote_value:
+                            ans.votes += 1  # add a vote
+                        else:
+                            ans.votes -= 1  # remove a vote
+                        answer_edited = True
+                    else:
+                        return Validator.custom_response(400, 'Bad Request',
+                                                         "Provide 'vote' data as a boolean (true OR false)")
+
                 if answer_edited:
                     ans.update(db.cur)
                     return jsonify(ans.obj_to_dict()), 202  # HTTP_202_ACCEPTED
                 else:
-                    return Validator.custom_response(400, 'Bad Request',
-                                                     """Provide 'answer' data to edit answer, 
-                                                     OR 'accepted' data (as a boolean) to edit accepted status""")
+                    return Validator.custom_response(400,
+                                                     'Bad Request',
+                                                     """Provide 'answer' data to edit answer, OR 'accepted' data (as a boolean) to edit accepted status OR 'vote' data (as a boolean) to up-vote or down-vote""")
 
         # Answer does not exist
         return Validator.custom_response(404, 'Not Found', 'No Answer found with id, ' + str(answer_id))
@@ -177,8 +203,6 @@ def register_user():
 
     # validate presence of appropriate data
     input_data = request.get_json(force=True)
-    if 'username' not in input_data.keys():
-        return Validator.custom_response(400, 'Bad Request', "Request must contain 'username' data")
     if 'full_name' not in input_data.keys():
         return Validator.custom_response(400, 'Bad Request', "Request must contain 'full_name' data")
     if 'email' not in input_data.keys():
@@ -188,9 +212,6 @@ def register_user():
     if 'retype_password' not in input_data.keys():
         return Validator.custom_response(400, 'Bad Request', "Request must contain 'retype_password' data")
 
-    username = input_data['username']
-    if len(str(username).strip()) == 0:
-        return Validator.custom_response(400, 'Bad Request', "Provide a username")
     password = input_data['password']
     if len(str(password)) < 6:
         return Validator.custom_response(400, 'Bad Request', "Password must be at least 6 characters long")
@@ -200,16 +221,17 @@ def register_user():
     email = input_data['email']
     if len(str(email).strip()) == 0:
         return Validator.custom_response(400, 'Bad Request', "Provide an email address")
+    # email validator
+    if not re.match(r"^[A-Za-z0-9.+_-]+@[A-Za-z0-9._-]+\.[a-zA-Z]+$", email):
+        return Validator.custom_response(400, 'Bad Request', "Invalid email format")
     retype_password = input_data['retype_password']
     if len(str(retype_password)) == 0:
         return Validator.custom_response(400, 'Bad Request', "Retype password")
 
-    # check if user already exists (compare username, email)
+    # check if user already exists (compare emails)
     all_users = User.read_all(db.cur)
     if all_users is not None:
         for user in all_users:
-            if user.username.strip().lower() == username.strip().lower():
-                return Validator.custom_response(409, 'Conflict', "Duplicate Value. Username is already taken")
             if user.email.strip().lower() == email.strip().lower():
                 return Validator.custom_response(409, 'Conflict', "Duplicate Value. Email Address is already taken")
 
@@ -218,11 +240,11 @@ def register_user():
         return Validator.custom_response(400, 'Bad Request', "Password mismatch")
 
     # if all is well; Add to database and return new id
-    new_id = User(0, username, full_name, email, password).create(db.cur)
-    user_dict = User(new_id, username, full_name, email, sha256.hash(password)).obj_to_dict()
+    new_id = User(0, full_name, email, password).create(db.cur)
+    user_dict = User(new_id, full_name, email, sha256.hash(password)).obj_to_dict()
 
     # create token
-    access_token = create_access_token(identity=new_id)
+    access_token = create_access_token(identity=new_id, expires_delta=False)
     user_dict['access_token'] = access_token
     user_dict['msg'] = 'User Registration Successful!'
     return jsonify(user_dict), 201
@@ -235,24 +257,23 @@ def login_user():
     input_data = request.get_json(force=True)
 
     # validation check for required values
-    if 'username' not in input_data.keys() or 'password' not in input_data.keys():
-        return Validator.custom_response(400, 'Bad Request', "Request must contain 'username' and 'password' data")
-    username = input_data['username'].strip()
-    if len(username) == 0:
-        return Validator.custom_response(400, 'Bad Request', "Provide a username")
+    if 'email' not in input_data.keys() or 'password' not in input_data.keys():
+        return Validator.custom_response(400, 'Bad Request', "Request must contain 'email' and 'password' data")
+    email = input_data['email'].strip()
+    if len(email) == 0:
+        return Validator.custom_response(400, 'Bad Request', "Provide an email address")
     password = input_data['password']
     if len(password.strip()) == 0:
         return Validator.custom_response(400, 'Bad Request', "Provide a password")
 
-    # get all users and check if username and password match
+    # get all users and check if email and password match
     all_users = User.read_all(db.cur)
     if all_users is not None:
         for user in all_users:
-            # verify that password and username match those of a user in the database
-            if username.strip() == user.username.strip() and sha256.verify(password, user.password):
+            if email.strip().lower() == user.email.strip().lower() and sha256.verify(password, user.password):
                 user_dict = user.obj_to_dict()
                 # create token
-                access_token = create_access_token(identity=user.id)
+                access_token = create_access_token(identity=user.id, expires_delta=False)
                 user_dict['access_token'] = access_token
                 user_dict['msg'] = 'Login Successful!'
                 return jsonify(user_dict), 200  # return user with access token
