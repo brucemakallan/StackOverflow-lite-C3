@@ -36,7 +36,7 @@ class Answer:
             answers_list = []
             cur.execute(
                 """SELECT answer_id, question_id, user_id, answer_answer, answer_votes, answer_accepted, answer_date_posted 
-                  FROM answers WHERE question_id = """ + str(question_id))
+                  FROM answers WHERE question_id = """ + str(question_id) + """ ORDER BY answer_votes DESC""")
             row = cur.fetchone()
             while row is not None:
                 answers_list.append(Answer(row[0], row[1], row[2], row[3], row[4], row[5], row[6]))

@@ -26,7 +26,8 @@ class Question:
         """Read all rows"""
         try:
             questions_list = []
-            cur.execute("SELECT question_id, user_id, question_question, question_date_posted FROM questions")
+            cur.execute("""SELECT question_id, user_id, question_question, question_date_posted FROM questions 
+                          ORDER BY question_id DESC""")
             row = cur.fetchone()
             while row is not None:
                 questions_list.append(Question(row[0], row[1], row[2], row[3]))
