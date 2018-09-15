@@ -1,16 +1,13 @@
 import psycopg2
-import os
 
 
 class Database:
 
-    def __init__(self):
+    def __init__(self, app):
         """Connect to the database and create all tables"""
         try:
-            # use the current environment to determine which database to use
-            database = 'stackoverflow'
-            if os.getenv('APP_SETTINGS') == 'testing':
-                database = 'stackoverflowtest'
+            # get database from configurations (based on current environment)
+            database = app.config["DATABASE"]
 
             # connect to the database selected
             self.conn = psycopg2.connect(database=database,
@@ -24,7 +21,8 @@ class Database:
             """Create all the tables required if they do not already exist"""
             commands = ["""CREATE TABLE IF NOT EXISTS users (
                                 user_id SERIAL PRIMARY KEY, 
-                                user_username VARCHAR(255) NOT NULL, 
+                                user_full_name VARCHAR(255) NOT NULL,
+                                user_email VARCHAR(255) NOT NULL,
                                 user_password VARCHAR(255) NOT NULL 
                             )""",
                         """CREATE TABLE IF NOT EXISTS questions (
@@ -38,6 +36,7 @@ class Database:
                                 question_id INTEGER,
                                 user_id INTEGER, 
                                 answer_answer VARCHAR(255) NOT NULL,
+                                answer_votes INTEGER,
                                 answer_accepted BOOLEAN NOT NULL,  
                                 answer_date_posted VARCHAR(255), 
                                 FOREIGN KEY (question_id) 

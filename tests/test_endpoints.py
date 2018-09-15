@@ -5,30 +5,20 @@ from flask import json
 from app.database import Database
 from app.views import app
 
+from tests.test_data import TestData
+
 
 class EndpointsTestCase(unittest.TestCase):
 
     def setUp(self):
         self.client = app.test_client(self)
 
-        # test data
-        self.test_data_question1 = dict(question='Test question sample one')
-        self.test_data_question2 = dict(question='Test question sample two')
-        self.test_data_question3 = dict(question='Test question sample three')
-        self.test_data_question4 = dict(question='Test question sample four')
-        self.test_data_answer = dict(answer="Test answer sample one")
-        self.user_data = dict(username="jane", password="pass")
-        self.user_data2 = dict(username="annie", password="pass")
-        self.user_data3 = dict(username="jane", password="password")
-        self.wrong_token = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE1MzU2NjgmmTAsIm5iZiI6MTUzNTY2ODU1MCwianRpIjoiZjA0MTVmODUtYjBkNC00MWYwLWFmMTAtNzU5YjhmNzgxY2Q0IiwiZXhwIjoxNTM1NjY5NDUwLCJpZGVudGl0eSI6MSwiZnJlc2giOmZhbHNlLCJ0eXBlIjoiYWNjZXNzIn0.9WTmhO49Ta2M3tvNuuUME52zObxW14jenCsIOFKo_cg'
-
-        # connect to the database using current App-Settings
-        # set APP_SETTINGS="testing"
-        self.database_obj = Database()
+        # RUN 'set APP_SETTINGS=testing' to set testing environment (for database)
+        self.database_obj = Database(app)
 
         # get Authorization token (used for all protected endpoints)
         signup_response = self.client.post('/api/v1/auth/signup',
-                                           data=json.dumps(self.user_data2),
+                                           data=json.dumps(TestData.user_data2),
                                            content_type='application/json')
         token_json_dict = json.loads(signup_response.data.decode())
         self.access_token = token_json_dict['access_token']
@@ -37,25 +27,28 @@ class EndpointsTestCase(unittest.TestCase):
     def test_sign_up(self):
         """Run test for: Register a new User"""
         signup_response = self.client.post('/api/v1/auth/signup',
-                                           data=json.dumps(self.user_data),
+                                           data=json.dumps(TestData.user_data),
                                            content_type='application/json')
-        self.assertIn("jane", str(signup_response.data))  # check if test username is returned after signup as it should
+        # check if test user data is returned after signup as it should
+        self.assertIn("Jane Doe", str(signup_response.data))
+        self.assertIn("jane@gmail.com", str(signup_response.data))
         self.assertEqual(signup_response.status_code, 201)  # 201: Created
 
     def test_login(self):
         """Run test for: Successful Login"""
         self.test_sign_up()
         login_response = self.client.post('/api/v1/auth/login',
-                                          data=json.dumps(self.user_data),
+                                          data=json.dumps(TestData.user_data),
                                           content_type='application/json')
-        self.assertIn("jane", str(login_response.data))
+        self.assertIn("Jane Doe", str(login_response.data))
+        self.assertIn("jane@gmail.com", str(login_response.data))
         self.assertEqual(login_response.status_code, 200)
 
     def test_invalid_login(self):
         """Run test for: Invalid login credentials"""
         self.test_sign_up()
         login_response = self.client.post('/api/v1/auth/login',
-                                          data=json.dumps(self.user_data3),
+                                          data=json.dumps(TestData.user_data3),
                                           content_type='application/json')
         self.assertIn("Invalid Login Credentials", str(login_response.data))
         self.assertEqual(login_response.status_code, 403)  # 403 Forbidden
@@ -63,15 +56,15 @@ class EndpointsTestCase(unittest.TestCase):
     def test_no_authorization(self):
         """Run test for: Wrong access token"""
         post_response = self.client.post('/api/v1/questions',
-                                         data=json.dumps(self.test_data_question2),
+                                         data=json.dumps(TestData.test_data_question2),
                                          content_type='application/json',
-                                         headers={'Authorization': 'Bearer {}'.format(self.wrong_token)})
+                                         headers={'Authorization': 'Bearer {}'.format(TestData.wrong_token)})
         self.assertIn('Signature verification failed', str(post_response.data))
 
     def test_post_question(self):
         """Run test for: Post a question"""
         post_response = self.client.post('/api/v1/questions',
-                                         data=json.dumps(self.test_data_question2),
+                                         data=json.dumps(TestData.test_data_question2),
                                          content_type='application/json',
                                          headers={'Authorization': 'Bearer {}'.format(self.access_token)})
         self.assertEqual(post_response.status_code, 201)
@@ -93,12 +86,12 @@ class EndpointsTestCase(unittest.TestCase):
         """Run test for: Post a duplicate question"""
 
         self.client.post('/api/v1/questions',
-                         data=json.dumps(self.test_data_question1),
+                         data=json.dumps(TestData.test_data_question1),
                          content_type='application/json',
                          headers={'Authorization': 'Bearer {}'.format(self.access_token)})
         # post again and run test for Duplicate Value
         post_response = self.client.post('/api/v1/questions',
-                                         data=json.dumps(self.test_data_question1),
+                                         data=json.dumps(TestData.test_data_question1),
                                          content_type='application/json',
                                          headers={'Authorization': 'Bearer {}'.format(self.access_token)})
         self.assertEqual(post_response.status_code, 409)  # 409 Conflict (Due to duplicate value)
@@ -112,7 +105,7 @@ class EndpointsTestCase(unittest.TestCase):
         sample_question = all_questions_list[0]
         url = '/api/v1/questions/' + str(sample_question['id']) + '/answers'
         post_response = self.client.post(url,
-                                         data=json.dumps(self.test_data_answer),
+                                         data=json.dumps(TestData.test_data_answer),
                                          content_type='application/json',
                                          headers={'Authorization': 'Bearer {}'.format(self.access_token)})
         self.assertEqual(post_response.status_code, 201)
