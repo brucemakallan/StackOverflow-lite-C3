@@ -4,3 +4,4 @@ __pycache__/
 app/__pycache__/
 app/tests/__pycache__/
 virtual_env/
+.vscode/

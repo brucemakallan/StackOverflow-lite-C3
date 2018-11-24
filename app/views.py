@@ -31,6 +31,13 @@ def api_get_all_questions():
     return Validator.check_for_content(Question.read_all(db.cur), 'There are no Questions in store')
 
 
+@app.route("/api/v1/answers", methods=['GET'])
+@jwt_required
+def api_get_all_answers():
+    """Get all answers"""
+    return Validator.check_for_content(Answer.read_all_answers(db.cur), 'There are no Answers')
+
+
 @app.route("/api/v1/questions/<int:question_id>/answers", methods=['GET'])
 @jwt_required
 def api_get_answers(question_id):
@@ -52,7 +59,8 @@ def api_get_one_question(question_id):
     questions_with_answers['question'] = question_obj.obj_to_dict()
     answers_list = Answer.read_all(db.cur, question_id)
     if answers_list is not None:
-        list_of_answer_dicts = [answer_obj.obj_to_dict() for answer_obj in answers_list]
+        list_of_answer_dicts = [answer_obj.obj_to_dict()
+                                for answer_obj in answers_list]
         if len(list_of_answer_dicts) > 0:
             questions_with_answers['answers'] = list_of_answer_dicts
 
@@ -79,7 +87,8 @@ def api_add_question():
                 return Validator.custom_response(409, 'Conflict', "Duplicate Value. Question already exists")
     date_posted = datetime.datetime.now()
     new_id = Question(0, current_user_id, question, date_posted).create(db.cur)
-    return jsonify(Question(new_id, current_user_id, question, date_posted).obj_to_dict()), 201  # 201 = created
+    # 201 = created
+    return jsonify(Question(new_id, current_user_id, question, date_posted).obj_to_dict()), 201
 
 
 @app.route("/api/v1/questions/<int:question_id>/answers", methods=['POST'])
@@ -105,7 +114,8 @@ def api_add_answer(question_id):
                 return Validator.custom_response(409, 'Conflict', "Duplicate Value. Answer already exists")
         accepted = 'false'
         date_posted = datetime.datetime.now()
-        new_id = Answer(0, question_id, current_user_id, answer, 0, accepted, date_posted).create(db.cur)
+        new_id = Answer(0, question_id, current_user_id, answer,
+                        0, accepted, date_posted).create(db.cur)
         return jsonify(Answer(new_id, question_id, current_user_id, answer, 0, accepted, date_posted).obj_to_dict()), 201
     else:
         return Validator.custom_response(404, 'Not Found', 'Question with id:' + str(question_id) + ' does not exist')
@@ -241,7 +251,8 @@ def register_user():
 
     # if all is well; Add to database and return new id
     new_id = User(0, full_name, email, password).create(db.cur)
-    user_dict = User(new_id, full_name, email, sha256.hash(password)).obj_to_dict()
+    user_dict = User(new_id, full_name, email,
+                     sha256.hash(password)).obj_to_dict()
 
     # create token
     access_token = create_access_token(identity=new_id, expires_delta=False)
@@ -273,7 +284,8 @@ def login_user():
             if email.strip().lower() == user.email.strip().lower() and sha256.verify(password, user.password):
                 user_dict = user.obj_to_dict()
                 # create token
-                access_token = create_access_token(identity=user.id, expires_delta=False)
+                access_token = create_access_token(
+                    identity=user.id, expires_delta=False)
                 user_dict['access_token'] = access_token
                 user_dict['msg'] = 'Login Successful!'
                 return jsonify(user_dict), 200  # return user with access token

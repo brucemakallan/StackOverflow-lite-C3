@@ -30,6 +30,23 @@ class Answer:
             print(error)
 
     @staticmethod
+    def read_all_answers(cur):
+        """Read all answers belonging to a specific question"""
+        try:
+            answers_list = []
+            cur.execute(
+                """SELECT answer_id, question_id, user_id, answer_answer, answer_votes, answer_accepted, answer_date_posted 
+                  FROM answers ORDER BY answer_votes DESC""")
+            row = cur.fetchone()
+            while row is not None:
+                answers_list.append(
+                    Answer(row[0], row[1], row[2], row[3], row[4], row[5], row[6]))
+                row = cur.fetchone()
+            return answers_list
+        except (Exception, psycopg2.DatabaseError) as error:
+            print(error)
+
+    @staticmethod
     def read_all(cur, question_id):
         """Read all answers belonging to a specific question"""
         try:
@@ -39,7 +56,8 @@ class Answer:
                   FROM answers WHERE question_id = """ + str(question_id) + """ ORDER BY answer_votes DESC""")
             row = cur.fetchone()
             while row is not None:
-                answers_list.append(Answer(row[0], row[1], row[2], row[3], row[4], row[5], row[6]))
+                answers_list.append(
+                    Answer(row[0], row[1], row[2], row[3], row[4], row[5], row[6]))
                 row = cur.fetchone()
             return answers_list
         except (Exception, psycopg2.DatabaseError) as error:
@@ -55,7 +73,8 @@ class Answer:
                   FROM answers WHERE answer_id=""" + str(answer_id))
             row = cur.fetchone()
             if row is not None:
-                answer = Answer(row[0], row[1], row[2], row[3], row[4], row[5], row[6])
+                answer = Answer(row[0], row[1], row[2],
+                                row[3], row[4], row[5], row[6])
             return answer
         except (Exception, psycopg2.DatabaseError) as error:
             print(error)
@@ -77,7 +96,8 @@ class Answer:
     def delete(self, cur):
         """Delete one row"""
         try:
-            cur.execute("DELETE FROM answers WHERE answer_id = %s", (str(self.id),))
+            cur.execute("DELETE FROM answers WHERE answer_id = %s",
+                        (str(self.id),))
         except (Exception, psycopg2.DatabaseError) as error:
             print(error)
 
